@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedido Local API - Documentação Técnica</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #151b23;
+      --panel-2: #1f2630;
+      --text: #e6edf3;
+      --muted: #9da7b3;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-2: #7ee787;
+      --danger: #ff7b72;
+      --warning: #d29922;
+      --code: #101820;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 72px;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+    }
+
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+
+    h1 { font-size: 2.2rem; }
+    h2 {
+      border-top: 1px solid var(--border);
+      margin-top: 34px;
+      padding-top: 26px;
+      color: var(--accent);
+    }
+    h3 { margin-top: 24px; color: var(--accent-2); }
+
+    p, ul, ol { margin: 0 0 14px; }
+    a { color: var(--accent); }
+    code {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 0.1rem 0.35rem;
+    }
+
+    pre {
+      background: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-x: auto;
+      padding: 16px;
+    }
+
+    pre code {
+      border: 0;
+      padding: 0;
+      background: transparent;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 22px;
+      overflow-wrap: anywhere;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    section, .callout {
+      background: transparent;
+    }
+
+    .callout {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 18px 0;
+      background: var(--panel);
+    }
+
+    .danger { border-left-color: var(--danger); }
+    .warning { border-left-color: var(--warning); }
+    .muted { color: var(--muted); }
+    .method {
+      display: inline-block;
+      min-width: 62px;
+      color: var(--bg);
+      background: var(--accent-2);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .post, .patch { background: var(--accent); }
+    .delete { background: var(--danger); }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Pedido Local API - Documentação Técnica</h1>
+    <p>
+      O <strong>Pedido Local</strong> é uma API REST monolítica para venda e entrega
+      de produtos dentro de uma cidade configurada. O foco do produto é permitir que
+      clientes comprem bebidas, sucos, lanches, sobremesas, vegetais e outros itens
+      gerais, com controle de catálogo, pedidos, estoque, pagamento registrado,
+      autorização por papéis e trilha de auditoria.
+    </p>
+    <p class="muted">
+      Esta documentação descreve a implementação atual do backend. Não há frontend,
+      serviços externos, cloud, mensageria ou integração real com meios de pagamento.
+    </p>
+  </header>
+
+  <section>
+    <h2>Conceitos Essenciais Primeiro</h2>
+
+    <h3>Como os IDs funcionam</h3>
+    <ul>
+      <li>Todos os principais registros usam <code>id</code> inteiro positivo gerado pelo banco SQLite.</li>
+      <li>IDs são chaves primárias autoincrementais e aparecem nas respostas para referência entre entidades.</li>
+      <li>Campos que recebem IDs pela API, como <code>category_id</code> e <code>product_id</code>, aceitam valores entre <code>1</code> e <code>2147483647</code>.</li>
+      <li>Quando um pedido é criado, os itens gravam também um snapshot do nome e preço do produto, então alterações futuras no catálogo não reescrevem o histórico do pedido.</li>
+    </ul>
+
+    <h3>Como timestamps são tratados</h3>
+    <ul>
+      <li>Campos <code>created_at</code> e <code>updated_at</code> são preenchidos pela aplicação no padrão UTC.</li>
+      <li>Entidades com ciclo de pedido podem ter <code>canceled_at</code> e <code>delivered_at</code>, também em UTC.</li>
+      <li>O SQLite não armazena timezone de forma tão rica quanto bancos como PostgreSQL; por isso a aplicação sempre gera os horários com <code>datetime.now(UTC)</code>.</li>
+      <li>O objetivo é manter consistência técnica e facilitar auditoria de eventos.</li>
+    </ul>
+
+    <h3>Como a autorização funciona</h3>
+    <ul>
+      <li>A API usa JWT Bearer Token.</li>
+      <li>Clientes se registram em <code>POST /auth/register</code> e fazem login em <code>POST /auth/token</code>.</li>
+      <li>Admins não são criados por endpoint público; são criados pelo comando local <code>pedido-local create-admin</code>.</li>
+      <li>Rotas públicas permitem leitura de catálogo e health check.</li>
+      <li>Rotas de cliente exigem usuário autenticado com papel <code>customer</code>.</li>
+      <li>Rotas administrativas exigem papel <code>admin</code>.</li>
+      <li>Tentativas sem token, com token inválido ou com papel insuficiente geram logs de auditoria quando aplicável.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Stack, Ferramentas e Uso</h2>
+    <table>
+      <thead>
+        <tr><th>Ferramenta</th><th>Uso no projeto</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Python 3.13</td><td>Linguagem principal do backend.</td></tr>
+        <tr><td>FastAPI</td><td>Framework REST, roteamento, OpenAPI e injeção de dependências.</td></tr>
+        <tr><td>Pydantic v2</td><td>Validação de payloads, limites de tamanho, enums e contratos de resposta.</td></tr>
+        <tr><td>SQLAlchemy 2.0</td><td>ORM e acesso ao banco com queries parametrizadas.</td></tr>
+        <tr><td>Alembic</td><td>Migrações versionadas do schema SQLite.</td></tr>
+        <tr><td>SQLite</td><td>Persistência local do monólito, sem serviço externo.</td></tr>
+        <tr><td>PyJWT</td><td>Criação e validação de tokens JWT.</td></tr>
+        <tr><td>pwdlib[argon2]</td><td>Hash seguro de senhas com Argon2.</td></tr>
+        <tr><td>pytest</td><td>Testes funcionais e de integridade usando banco SQLite real migrado.</td></tr>
+        <tr><td>pytest-cov</td><td>Relatório de cobertura dos testes.</td></tr>
+        <tr><td>httpx/TestClient</td><td>Cliente de teste usado pelo FastAPI.</td></tr>
+        <tr><td>ruff</td><td>Lint, organização de imports e qualidade estática básica.</td></tr>
+        <tr><td>uvicorn</td><td>Servidor ASGI para execução local da API.</td></tr>
+        <tr><td>venv + pip</td><td>Ambiente virtual e instalação de dependências locais.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Configuração e Execução</h2>
+    <p>Variáveis principais podem ser colocadas em <code>.env</code>, usando <code>.env.example</code> como base.</p>
+    <table>
+      <thead>
+        <tr><th>Variável</th><th>Descrição</th><th>Padrão</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>DATABASE_URL</code></td><td>URL do banco SQLAlchemy.</td><td><code>sqlite:///./pedidolocal.db</code></td></tr>
+        <tr><td><code>JWT_SECRET_KEY</code></td><td>Chave de assinatura JWT. Deve ser trocada fora de desenvolvimento.</td><td>chave local de desenvolvimento</td></tr>
+        <tr><td><code>JWT_ALGORITHM</code></td><td>Algoritmo JWT.</td><td><code>HS256</code></td></tr>
+        <tr><td><code>ACCESS_TOKEN_EXPIRE_MINUTES</code></td><td>Expiração do token.</td><td><code>30</code></td></tr>
+        <tr><td><code>ALLOWED_CITY</code></td><td>Cidade aceita para entrega.</td><td><code>Pedido Local</code></td></tr>
+        <tr><td><code>MAX_REQUEST_BODY_BYTES</code></td><td>Limite de tamanho do corpo HTTP.</td><td><code>1048576</code> bytes</td></tr>
+      </tbody>
+    </table>
+
+    <pre><code>python -m venv .venv
+.\.venv\Scripts\python -m pip install --upgrade pip
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python -m alembic upgrade head
+.\.venv\Scripts\pedido-local create-admin --email admin@example.com --password Admin12345 --full-name "Admin"
+.\.venv\Scripts\python -m uvicorn app.main:app --reload</code></pre>
+  </section>
+
+  <section>
+    <h2>Validações e Limitações Gerais</h2>
+    <ul>
+      <li>Corpo HTTP acima de <code>1 MiB</code> é rejeitado com <code>413</code>.</li>
+      <li>Textos são aparados com <code>strip()</code> antes de validar tamanho.</li>
+      <li>Textos obrigatórios não podem ficar vazios depois do trim.</li>
+      <li>Campos de nome, endereço e cidade não aceitam caracteres de controle.</li>
+      <li>Descrições aceitam quebras de linha, tabulação e retorno de carro, mas rejeitam outros caracteres de controle.</li>
+      <li>Preços aceitam no máximo <code>99999.99</code>, com duas casas decimais.</li>
+      <li>Estoque aceita valores entre <code>0</code> e <code>100000</code>.</li>
+      <li>Quantidade por item de pedido aceita valores entre <code>1</code> e <code>100</code>.</li>
+      <li>Um pedido pode conter entre <code>1</code> e <code>50</code> itens.</li>
+      <li>Produtos duplicados no mesmo pedido são rejeitados.</li>
+      <li>Senha de cadastro exige 8 a 128 caracteres, letra minúscula, letra maiúscula e número.</li>
+      <li>Telefone aceita apenas dígitos, espaços, <code>+</code>, <code>-</code> e parênteses, com 8 a 15 dígitos reais.</li>
+      <li>Data de nascimento deve estar entre <code>1900-01-01</code> e a data atual.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Autenticação</h2>
+    <p>
+      O login usa o padrão OAuth2 Password Flow do FastAPI. O campo
+      <code>username</code> deve receber o e-mail do usuário. O retorno contém
+      <code>access_token</code> e <code>token_type</code>.
+    </p>
+
+    <h3>Exemplo de uso</h3>
+    <pre><code>POST /auth/token
+Content-Type: application/x-www-form-urlencoded
+
+username=cliente@example.com&amp;password=Customer12345</code></pre>
+
+    <p>Depois do login, envie o token em rotas protegidas:</p>
+    <pre><code>Authorization: Bearer &lt;access_token&gt;</code></pre>
+  </section>
+
+  <section>
+    <h2>Rotas</h2>
+
+    <h3>Health</h3>
+    <table>
+      <thead><tr><th>Método</th><th>Rota</th><th>Acesso</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method">GET</span></td><td><code>/health</code></td><td>Público</td><td>Verifica se API e banco respondem.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Auth</h3>
+    <table>
+      <thead><tr><th>Método</th><th>Rota</th><th>Acesso</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method post">POST</span></td><td><code>/auth/register</code></td><td>Público</td><td>Cadastra cliente com perfil.</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/auth/token</code></td><td>Público</td><td>Autentica e retorna JWT.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/auth/me</code></td><td>Autenticado</td><td>Retorna o usuário atual sem segredos.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Catálogo</h3>
+    <table>
+      <thead><tr><th>Método</th><th>Rota</th><th>Acesso</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method">GET</span></td><td><code>/categories</code></td><td>Público</td><td>Lista categorias ativas.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/categories/{category_id}</code></td><td>Público</td><td>Busca categoria ativa por ID.</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/categories</code></td><td>Admin</td><td>Cria categoria.</td></tr>
+        <tr><td><span class="method patch">PATCH</span></td><td><code>/categories/{category_id}</code></td><td>Admin</td><td>Atualiza categoria.</td></tr>
+        <tr><td><span class="method delete">DELETE</span></td><td><code>/categories/{category_id}</code></td><td>Admin</td><td>Desativa categoria sem apagar o registro.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/products</code></td><td>Público</td><td>Lista produtos ativos.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/products/{product_id}</code></td><td>Público</td><td>Busca produto ativo por ID.</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/products</code></td><td>Admin</td><td>Cria produto.</td></tr>
+        <tr><td><span class="method patch">PATCH</span></td><td><code>/products/{product_id}</code></td><td>Admin</td><td>Atualiza produto.</td></tr>
+        <tr><td><span class="method delete">DELETE</span></td><td><code>/products/{product_id}</code></td><td>Admin</td><td>Desativa produto sem apagar o registro.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Pedidos</h3>
+    <table>
+      <thead><tr><th>Método</th><th>Rota</th><th>Acesso</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method post">POST</span></td><td><code>/orders</code></td><td>Cliente autenticado</td><td>Cria pedido e baixa estoque transacionalmente.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/orders</code></td><td>Autenticado</td><td>Cliente vê seus pedidos; admin vê todos, com filtros opcionais.</td></tr>
+        <tr><td><span class="method">GET</span></td><td><code>/orders/{order_id}</code></td><td>Autenticado</td><td>Busca pedido respeitando isolamento do cliente.</td></tr>
+        <tr><td><span class="method post">POST</span></td><td><code>/orders/{order_id}/cancel</code></td><td>Cliente ou admin autorizado</td><td>Cancela pedido não entregue e restaura estoque uma única vez.</td></tr>
+        <tr><td><span class="method patch">PATCH</span></td><td><code>/orders/{order_id}/status</code></td><td>Admin</td><td>Atualiza status do pedido respeitando transições válidas.</td></tr>
+        <tr><td><span class="method patch">PATCH</span></td><td><code>/orders/{order_id}/payment</code></td><td>Admin</td><td>Atualiza status de pagamento respeitando transições válidas.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Auditoria</h3>
+    <table>
+      <thead><tr><th>Método</th><th>Rota</th><th>Acesso</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method">GET</span></td><td><code>/audit-logs?limit=100</code></td><td>Admin</td><td>Lista logs de auditoria, com limite entre 1 e 500.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Entidades e Constraints</h2>
+
+    <h3>User</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Regras</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>int</td><td>PK autoincremental.</td></tr>
+        <tr><td><code>email</code></td><td>string</td><td>Único, indexado, e-mail válido, até 255 caracteres.</td></tr>
+        <tr><td><code>full_name</code></td><td>string</td><td>2 a 120 caracteres, trim, sem controles.</td></tr>
+        <tr><td><code>hashed_password</code></td><td>string</td><td>Hash Argon2; nunca retornado pela API.</td></tr>
+        <tr><td><code>role</code></td><td>enum</td><td><code>admin</code> ou <code>customer</code>.</td></tr>
+        <tr><td><code>is_active</code></td><td>bool</td><td>Usuários inativos não autenticam.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>CustomerProfile</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Regras</th></tr></thead>
+      <tbody>
+        <tr><td><code>user_id</code></td><td>int</td><td>PK e FK para <code>users.id</code>.</td></tr>
+        <tr><td><code>phone</code></td><td>string</td><td>8 a 30 caracteres; 8 a 15 dígitos reais.</td></tr>
+        <tr><td><code>address_line</code></td><td>string</td><td>5 a 255 caracteres, sem controles.</td></tr>
+        <tr><td><code>city</code></td><td>string</td><td>2 a 120 caracteres; usado na regra de entrega local.</td></tr>
+        <tr><td><code>birth_date</code></td><td>date/null</td><td>Entre 1900-01-01 e hoje; obrigatório na prática para comprar álcool.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Category</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Regras</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>int</td><td>PK autoincremental.</td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Único, 2 a 80 caracteres, trim, sem controles.</td></tr>
+        <tr><td><code>description</code></td><td>string/null</td><td>Até 1000 caracteres; permite texto multilinha seguro.</td></tr>
+        <tr><td><code>is_active</code></td><td>bool</td><td>Soft delete usa <code>false</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Product</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Regras</th></tr></thead>
+      <tbody>
+        <tr><td><code>category_id</code></td><td>int</td><td>FK para categoria ativa; 1 a 2147483647.</td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>2 a 120 caracteres, trim, sem controles.</td></tr>
+        <tr><td><code>description</code></td><td>string/null</td><td>Até 1000 caracteres.</td></tr>
+        <tr><td><code>price</code></td><td>decimal</td><td>0 a 99999.99, duas casas decimais.</td></tr>
+        <tr><td><code>stock</code></td><td>int</td><td>0 a 100000.</td></tr>
+        <tr><td><code>is_active</code></td><td>bool</td><td>Produtos inativos não aparecem nas leituras públicas e não podem ser comprados.</td></tr>
+        <tr><td><code>is_alcoholic</code></td><td>bool</td><td>Se verdadeiro, exige cliente com 18 anos ou mais.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Order e OrderItem</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Regras</th></tr></thead>
+      <tbody>
+        <tr><td><code>status</code></td><td>enum</td><td><code>pending</code>, <code>confirmed</code>, <code>preparing</code>, <code>out_for_delivery</code>, <code>delivered</code>, <code>canceled</code>.</td></tr>
+        <tr><td><code>payment_method</code></td><td>enum</td><td><code>cash</code>, <code>pix</code>, <code>card_machine</code>.</td></tr>
+        <tr><td><code>payment_status</code></td><td>enum</td><td><code>pending</code>, <code>paid</code>, <code>failed</code>, <code>refunded</code>.</td></tr>
+        <tr><td><code>delivery_city</code></td><td>string</td><td>Deve bater com <code>ALLOWED_CITY</code>, ignorando maiúsculas/minúsculas.</td></tr>
+        <tr><td><code>subtotal</code></td><td>decimal</td><td>Soma dos itens, nunca negativa.</td></tr>
+        <tr><td><code>stock_restored</code></td><td>bool</td><td>Impede restauração duplicada no cancelamento.</td></tr>
+        <tr><td><code>quantity</code></td><td>int</td><td>1 a 100 por item.</td></tr>
+        <tr><td><code>unit_price</code></td><td>decimal</td><td>Snapshot do preço no momento da compra.</td></tr>
+        <tr><td><code>product_name_snapshot</code></td><td>string</td><td>Snapshot do nome no momento da compra.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>AuditLog</h3>
+    <table>
+      <thead><tr><th>Campo</th><th>Descrição</th></tr></thead>
+      <tbody>
+        <tr><td><code>actor_user_id</code></td><td>Usuário que causou o evento, quando houver.</td></tr>
+        <tr><td><code>action</code></td><td>Ação auditada, como <code>order.created</code>.</td></tr>
+        <tr><td><code>entity_type</code> e <code>entity_id</code></td><td>Tipo e ID da entidade afetada.</td></tr>
+        <tr><td><code>request_id</code></td><td>Identificador da requisição, propagado em <code>X-Request-ID</code>.</td></tr>
+        <tr><td><code>before</code> e <code>after</code></td><td>Snapshots seguros antes/depois da mudança.</td></tr>
+        <tr><td><code>metadata</code></td><td>Metadados seguros do evento.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Regras de Processo</h2>
+    <ul>
+      <li>Criar pedido valida cidade, produtos ativos, categoria ativa, estoque e restrição de idade.</li>
+      <li>O estoque é reduzido na mesma transação da criação do pedido.</li>
+      <li>Se uma validação falha, a operação registra rejeição auditável e não altera estoque.</li>
+      <li>Pedido entregue não pode ser cancelado.</li>
+      <li>Cancelamento restaura estoque uma vez e marca <code>stock_restored</code>.</li>
+      <li>Status de pedido só segue transições documentadas.</li>
+      <li>Status de pagamento só segue transições documentadas.</li>
+    </ul>
+
+    <h3>Transições de pedido</h3>
+    <pre><code>pending -> confirmed | canceled
+confirmed -> preparing | canceled
+preparing -> out_for_delivery | canceled
+out_for_delivery -> delivered
+delivered -> estado final
+canceled -> estado final</code></pre>
+
+    <h3>Transições de pagamento</h3>
+    <pre><code>pending -> paid | failed
+failed -> pending | paid
+paid -> refunded
+refunded -> estado final</code></pre>
+  </section>
+
+  <section>
+    <h2>Auditoria e Segurança</h2>
+    <ul>
+      <li>Eventos críticos geram registros em <code>audit_logs</code>.</li>
+      <li>São auditados cadastro, sucesso/falha de login, negação de autorização, mutações de catálogo, criação/cancelamento de pedido, mudança de status e pagamento.</li>
+      <li>Senhas, hashes, JWTs e tokens nunca devem aparecer em respostas ou logs.</li>
+      <li>Autorização é aplicada por dependências FastAPI centralizadas.</li>
+      <li>Persistência usa SQLAlchemy, evitando concatenação manual de SQL.</li>
+      <li>Validações de entrada reduzem risco de abuso de tamanho, payload inválido e manipulação de dados.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Códigos de Resposta e Erros</h2>
+    <table>
+      <thead><tr><th>Código</th><th>Uso típico</th></tr></thead>
+      <tbody>
+        <tr><td><code>200</code></td><td>Leitura ou mutação concluída com sucesso.</td></tr>
+        <tr><td><code>201</code></td><td>Criação de usuário, categoria, produto ou pedido.</td></tr>
+        <tr><td><code>400</code></td><td>Regra de negócio inválida, como cidade fora da área.</td></tr>
+        <tr><td><code>401</code></td><td>Token ausente, inválido ou credenciais incorretas.</td></tr>
+        <tr><td><code>403</code></td><td>Papel insuficiente ou restrição de idade.</td></tr>
+        <tr><td><code>404</code></td><td>Recurso inexistente, inativo ou invisível para o usuário.</td></tr>
+        <tr><td><code>409</code></td><td>Conflito, como e-mail duplicado, estoque insuficiente ou transição inválida.</td></tr>
+        <tr><td><code>413</code></td><td>Corpo da requisição maior que o limite configurado.</td></tr>
+        <tr><td><code>422</code></td><td>Payload falhou nas validações Pydantic.</td></tr>
+      </tbody>
+    </table>
+    <p>Erros de domínio retornam o formato simples:</p>
+    <pre><code>{ "detail": "mensagem do erro" }</code></pre>
+  </section>
+
+  <section>
+    <h2>Testes e Validação Técnica</h2>
+    <p>
+      Os testes usam bancos SQLite temporários migrados pelo Alembic, não mocks de
+      persistência. Isso valida o contrato API + service layer + ORM + banco.
+    </p>
+    <pre><code>.\.venv\Scripts\python -m pytest --cov=app --cov-report=term-missing
+.\.venv\Scripts\python -m ruff check .
+.\.venv\Scripts\python -m alembic upgrade head</code></pre>
+    <ul>
+      <li><code>tests/test_auth.py</code>: cadastro, login, duplicidade, proteção de rota.</li>
+      <li><code>tests/test_catalog.py</code>: permissões admin, leitura pública, soft delete.</li>
+      <li><code>tests/test_orders.py</code>: criação, estoque, snapshots, cancelamento, isolamento e transições.</li>
+      <li><code>tests/test_audit.py</code>: criação de logs e ausência de segredos.</li>
+      <li><code>tests/test_validation.py</code>: limites de payload, senha, telefone, datas, produto, preço e estoque.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Arquivos Principais</h2>
+    <table>
+      <thead><tr><th>Arquivo/Pasta</th><th>Responsabilidade</th></tr></thead>
+      <tbody>
+        <tr><td><code>app/main.py</code></td><td>Criação da aplicação FastAPI, middleware de request id e limite de corpo.</td></tr>
+        <tr><td><code>app/api/routes/</code></td><td>Endpoints REST.</td></tr>
+        <tr><td><code>app/api/deps.py</code></td><td>Dependências de autenticação, usuário atual e admin atual.</td></tr>
+        <tr><td><code>app/core/</code></td><td>Configuração, exceções e segurança JWT/senhas.</td></tr>
+        <tr><td><code>app/db/</code></td><td>Base ORM, engine e sessões SQLAlchemy.</td></tr>
+        <tr><td><code>app/models/entities.py</code></td><td>Modelos ORM e enums.</td></tr>
+        <tr><td><code>app/schemas/</code></td><td>Contratos Pydantic de entrada e saída.</td></tr>
+        <tr><td><code>app/services/</code></td><td>Regras de negócio e auditoria.</td></tr>
+        <tr><td><code>migrations/</code></td><td>Ambiente e versões Alembic.</td></tr>
+        <tr><td><code>tests/</code></td><td>Testes funcionais e de validação.</td></tr>
+        <tr><td><code>ARCHITECTURE.md</code></td><td>Resumo arquitetural.</td></tr>
+        <tr><td><code>AUDIT.md</code></td><td>Matriz de requisitos e controles de auditoria.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Limitações Conhecidas</h2>
+    <ul>
+      <li>Sem pagamento real; apenas registro de método e status.</li>
+      <li>Sem cálculo de frete, rotas ou entregadores.</li>
+      <li>Sem UI.</li>
+      <li>Sem serviços externos.</li>
+      <li>SQLite é adequado para o escopo acadêmico/local, mas uma produção real normalmente exigiria PostgreSQL ou similar.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
