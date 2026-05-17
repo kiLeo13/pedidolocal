@@ -1,0 +1,55 @@
+[project]
+name = "pedido-local"
+version = "0.1.0"
+description = "Pedido Local backend REST API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.14.0",
+    "email-validator>=2.2.0",
+    "fastapi>=0.115.0",
+    "pydantic-settings>=2.7.0",
+    "pyjwt>=2.10.0",
+    "python-multipart>=0.0.12",
+    "pwdlib[argon2]>=0.3.0",
+    "sqlalchemy>=2.0.0",
+    "uvicorn[standard]>=0.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.28.0",
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+]
+
+[project.scripts]
+pedido-local = "app.cli:main"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["tests*", "migrations*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
