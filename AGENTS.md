@@ -11,10 +11,12 @@
 
 ## Verification
 
-Before considering a task complete, run:
+Before considering a task complete, run from the `backend` directory:
 
 ```powershell
+cd backend
 .\.venv\Scripts\python -m pytest --cov=app --cov-report=term-missing
 .\.venv\Scripts\python -m ruff check .
 .\.venv\Scripts\python -m alembic upgrade head
 ```
+

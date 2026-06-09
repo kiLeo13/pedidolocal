@@ -5,6 +5,7 @@ Python monolith REST API for a local-city product ordering and delivery service.
 ## Quick Start
 
 ```powershell
+cd backend
 python -m venv .venv
 .\.venv\Scripts\python -m pip install --upgrade pip
 .\.venv\Scripts\python -m pip install -e ".[dev]"
@@ -19,6 +20,7 @@ Full project documentation in Portuguese is available at `DOCS.html`.
 ## Validation
 
 ```powershell
+cd backend
 .\.venv\Scripts\python -m pytest --cov=app --cov-report=term-missing
 .\.venv\Scripts\python -m ruff check .
 .\.venv\Scripts\python -m alembic upgrade head

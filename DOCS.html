@@ -125,6 +125,155 @@
     }
     .post, .patch { background: var(--accent); }
     .delete { background: var(--danger); }
+
+    @media print {
+      :root {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --panel-2: #f2f4f7;
+        --text: #111827;
+        --muted: #4b5563;
+        --border: #cbd5e1;
+        --accent: #111827;
+        --accent-2: #1f2937;
+        --danger: #991b1b;
+        --warning: #92400e;
+        --code: #f8fafc;
+      }
+
+      @page {
+        size: A4;
+        margin: 18mm 16mm;
+      }
+
+      * {
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #111827 !important;
+      }
+
+      body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        print-color-adjust: economy;
+        -webkit-print-color-adjust: economy;
+      }
+
+      main {
+        width: 100%;
+        padding: 0;
+      }
+
+      header {
+        border-bottom: 0;
+        margin-bottom: 18pt;
+        padding-bottom: 12pt;
+      }
+
+      h1 {
+        font-size: 22pt;
+        color: var(--text);
+      }
+
+      h2 {
+        border-top: 0;
+        border-bottom: 0;
+        color: var(--text);
+        font-size: 15pt;
+        margin-top: 18pt;
+        padding-top: 0;
+      }
+
+      h3 {
+        color: var(--text);
+        font-size: 12pt;
+      }
+
+      p, li, td, th {
+        font-size: 9.5pt;
+      }
+
+      code {
+        background: transparent;
+        color: var(--text);
+        border: 0;
+        padding: 0;
+      }
+
+      pre {
+        background: #ffffff !important;
+        color: var(--text);
+        border: 0;
+        border-left: 2pt solid #d1d5db;
+        border-radius: 0;
+        padding: 4pt 0 4pt 8pt;
+      }
+
+      table {
+        border-collapse: collapse;
+        border: 0;
+        margin: 10pt 0 14pt;
+      }
+
+      th {
+        background: #f8fafc !important;
+        color: var(--text) !important;
+        border: 0;
+        border-bottom: 0.75pt solid #9ca3af;
+        font-weight: 700;
+      }
+
+      td {
+        background: #ffffff !important;
+        color: var(--text) !important;
+        border: 0;
+        border-bottom: 0.5pt solid #e5e7eb;
+      }
+
+      a {
+        color: var(--text);
+        text-decoration: none;
+      }
+
+      .callout {
+        background: #ffffff;
+        border: 0;
+        border-left: 2pt solid #d1d5db;
+        padding: 8pt 0 8pt 10pt;
+      }
+
+      .method {
+        background: transparent !important;
+        color: var(--text) !important;
+        border: 0;
+        min-width: 0;
+        padding: 0;
+      }
+
+      h1, h2, h3, p, li, td, th {
+        break-inside: avoid;
+      }
+
+      h2 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      table {
+        break-inside: auto;
+        page-break-inside: auto;
+      }
+
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      pre, .callout {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
   </style>
 </head>
 <body>
@@ -512,6 +661,179 @@ refunded -> estado final</code></pre>
       <li>Sem serviços externos.</li>
       <li>SQLite é adequado para o escopo acadêmico/local, mas uma produção real normalmente exigiria PostgreSQL ou similar.</li>
     </ul>
+  </section>
+
+  <section>
+    <h2>Falhas Identificadas e Melhorias Aplicadas no Planejamento</h2>
+    <p>
+      Durante o planejamento e a implementação, foram analisados pontos que poderiam
+      gerar exploração técnica, inconsistência operacional ou falha de auditoria. A
+      lista abaixo registra as principais fragilidades possíveis e as correções ou
+      melhorias aplicadas para reduzir o risco no escopo atual do projeto.
+    </p>
+
+    <h3>Possíveis falhas ou vulnerabilidades exploráveis</h3>
+    <table>
+      <thead>
+        <tr><th>Risco identificado</th><th>Como poderia ser explorado</th><th>Impacto possível</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Payloads excessivamente grandes</td>
+          <td>Envio de corpos HTTP gigantes para consumir memória, CPU ou armazenamento.</td>
+          <td>Indisponibilidade da API ou degradação de desempenho.</td>
+        </tr>
+        <tr>
+          <td>Campos de texto sem limite</td>
+          <td>Nomes, descrições, endereços ou cidades com tamanho absurdo ou caracteres de controle.</td>
+          <td>Erro de persistência, abuso de banco, logs ilegíveis e respostas inconsistentes.</td>
+        </tr>
+        <tr>
+          <td>Senhas fracas</td>
+          <td>Uso de senhas curtas ou triviais em contas de cliente.</td>
+          <td>Maior risco de acesso indevido por tentativa de credenciais.</td>
+        </tr>
+        <tr>
+          <td>Exposição de segredos</td>
+          <td>Retornar ou registrar senha, hash de senha, JWT ou token em logs e respostas.</td>
+          <td>Comprometimento direto de contas e quebra de confidencialidade.</td>
+        </tr>
+        <tr>
+          <td>Manipulação de estoque</td>
+          <td>Criar pedidos simultâneos ou inválidos tentando gerar estoque negativo.</td>
+          <td>Venda de produtos indisponíveis e inconsistência operacional.</td>
+        </tr>
+        <tr>
+          <td>Cancelamento duplicado</td>
+          <td>Cancelar o mesmo pedido repetidas vezes para restaurar estoque mais de uma vez.</td>
+          <td>Estoque artificialmente inflado.</td>
+        </tr>
+        <tr>
+          <td>Alteração indevida de status</td>
+          <td>Pular etapas do pedido, por exemplo de <code>pending</code> direto para <code>delivered</code>.</td>
+          <td>Processo sem rastreabilidade e baixa confiança na operação.</td>
+        </tr>
+        <tr>
+          <td>Acesso horizontal entre clientes</td>
+          <td>Um cliente tentar acessar pedido de outro cliente alterando o ID na URL.</td>
+          <td>Vazamento de dados de pedidos e clientes.</td>
+        </tr>
+        <tr>
+          <td>Privilégio administrativo indevido</td>
+          <td>Cliente tentar criar produtos, editar catálogo, consultar auditoria ou mudar status de pedido.</td>
+          <td>Manipulação de catálogo, pedidos e trilhas de auditoria.</td>
+        </tr>
+        <tr>
+          <td>Compra de produto alcoólico por menor</td>
+          <td>Cliente sem data de nascimento válida ou menor de 18 anos tentar comprar item alcoólico.</td>
+          <td>Violação de regra de negócio e risco legal.</td>
+        </tr>
+        <tr>
+          <td>Entrega fora da cidade atendida</td>
+          <td>Cliente informar outra cidade no pedido.</td>
+          <td>Pedido operacionalmente inválido para o foco local do produto.</td>
+        </tr>
+        <tr>
+          <td>SQL injection por manipulação de entrada</td>
+          <td>Enviar valores maliciosos em campos persistidos ou filtros.</td>
+          <td>Risco de alteração/leitura indevida caso houvesse SQL manual inseguro.</td>
+        </tr>
+        <tr>
+          <td>Ausência de trilha de auditoria</td>
+          <td>Mutações críticas ocorrerem sem registro de ator, ação e entidade afetada.</td>
+          <td>Dificuldade de investigação, baixa conformidade e perda de evidência técnica.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Correções e melhorias aplicadas durante o planejamento</h3>
+    <table>
+      <thead>
+        <tr><th>Melhoria aplicada</th><th>Onde foi aplicada</th><th>Resultado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Uso de FastAPI + Pydantic v2 para contratos explícitos.</td>
+          <td>Schemas em <code>app/schemas/</code>.</td>
+          <td>Entradas inválidas são rejeitadas antes da regra de negócio.</td>
+        </tr>
+        <tr>
+          <td>Limite global de corpo HTTP.</td>
+          <td>Middleware em <code>app/main.py</code>.</td>
+          <td>Payloads acima de <code>MAX_REQUEST_BODY_BYTES</code> retornam <code>413</code>.</td>
+        </tr>
+        <tr>
+          <td>Limites e limpeza de texto.</td>
+          <td><code>app/schemas/validation.py</code>.</td>
+          <td>Campos são aparados, limitados e rejeitam texto vazio ou controles inseguros.</td>
+        </tr>
+        <tr>
+          <td>Limites numéricos para IDs, preço, estoque, quantidade e lista de itens.</td>
+          <td>Schemas de catálogo e pedidos.</td>
+          <td>Reduz abuso de valores extremos e inconsistências de domínio.</td>
+        </tr>
+        <tr>
+          <td>Hash de senha com Argon2.</td>
+          <td><code>app/core/security.py</code>.</td>
+          <td>Senhas não são persistidas em texto puro.</td>
+        </tr>
+        <tr>
+          <td>JWT com expiração e dependências centralizadas de autenticação.</td>
+          <td><code>app/api/deps.py</code>.</td>
+          <td>Rotas protegidas validam usuário ativo e token antes de executar a operação.</td>
+        </tr>
+        <tr>
+          <td>Separação entre cliente e admin.</td>
+          <td>Dependência <code>get_current_admin</code> e rotas administrativas.</td>
+          <td>Clientes não conseguem mutar catálogo, status de pedido, pagamento ou auditoria.</td>
+        </tr>
+        <tr>
+          <td>Admin criado por CLI, não por endpoint público.</td>
+          <td><code>pedido-local create-admin</code>.</td>
+          <td>Reduz superfície para criação indevida de contas privilegiadas.</td>
+        </tr>
+        <tr>
+          <td>SQLAlchemy ORM e queries parametrizadas.</td>
+          <td>Services e models.</td>
+          <td>Evita concatenação manual de SQL e reduz risco de SQL injection.</td>
+        </tr>
+        <tr>
+          <td>Snapshots de preço e nome no item do pedido.</td>
+          <td><code>OrderItem</code>.</td>
+          <td>Histórico do pedido permanece íntegro mesmo se o produto mudar depois.</td>
+        </tr>
+        <tr>
+          <td>Baixa e restauração de estoque controladas pela service layer.</td>
+          <td><code>app/services/orders.py</code>.</td>
+          <td>Criação e cancelamento de pedidos preservam integridade operacional.</td>
+        </tr>
+        <tr>
+          <td>Flag <code>stock_restored</code>.</td>
+          <td>Modelo <code>Order</code>.</td>
+          <td>Impede restauração duplicada de estoque.</td>
+        </tr>
+        <tr>
+          <td>Máquina de estados explícita para pedido e pagamento.</td>
+          <td><code>ORDER_TRANSITIONS</code> e <code>PAYMENT_TRANSITIONS</code>.</td>
+          <td>Transições inválidas são rejeitadas com <code>409</code>.</td>
+        </tr>
+        <tr>
+          <td>Auditoria técnica de operações críticas.</td>
+          <td><code>AuditLog</code> e <code>app/services/audit.py</code>.</td>
+          <td>Eventos relevantes registram ator, ação, entidade, request id e snapshots seguros.</td>
+        </tr>
+        <tr>
+          <td>Testes funcionais com SQLite real migrado pelo Alembic.</td>
+          <td><code>tests/</code>.</td>
+          <td>Valida API, regras de negócio, persistência, auditoria e limites contra banco real.</td>
+        </tr>
+        <tr>
+          <td>Documentação técnica em Markdown e HTML.</td>
+          <td><code>ARCHITECTURE.md</code>, <code>AUDIT.md</code> e <code>DOCS.html</code>.</td>
+          <td>Facilita revisão acadêmica, auditoria e manutenção do projeto.</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 </main>
 </body>
