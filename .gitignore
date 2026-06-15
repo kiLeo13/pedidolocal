@@ -44,6 +44,11 @@ frontend/.metadata
 *.log
 CRASHLOGS.txt
 
+# Generated/local documentation
+AUDIT.md
+DOCS.html
+frontend/DOCUMENTATION.md
+
 # OS/editor noise
 .DS_Store
 Thumbs.db
