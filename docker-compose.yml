@@ -1,0 +1,19 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      ALLOWED_CITY: "Pedido Local"
+      DATABASE_URL: "sqlite:////app/data/pedidolocal.db"
+      ENVIRONMENT: "development"
+      JWT_ALGORITHM: "HS256"
+      JWT_SECRET_KEY: "change-this-development-secret-key-before-running"
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_data:/app/data
+
+volumes:
+  backend_data:
