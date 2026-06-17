@@ -36,17 +36,19 @@ Map<String, dynamic> productJson({
 Map<String, dynamic> userJson({String role = 'customer'}) {
   return {
     'id': 1,
-    'email': 'customer@example.com',
-    'full_name': 'Cliente Teste',
+    'email': role == 'admin' ? 'admin@example.com' : 'customer@example.com',
+    'full_name': role == 'admin' ? 'Admin Teste' : 'Cliente Teste',
     'role': role,
     'is_active': true,
     'created_at': '2026-06-14T00:00:00Z',
-    'profile': {
-      'phone': '98999999999',
-      'address_line': 'Rua Teste, 100',
-      'city': 'Pedido Local',
-      'birth_date': '1990-01-01',
-    },
+    'profile': role == 'admin'
+        ? null
+        : {
+            'phone': '98999999999',
+            'address_line': 'Rua Teste, 100',
+            'city': 'Pedido Local',
+            'birth_date': '1990-01-01',
+          },
   };
 }
 

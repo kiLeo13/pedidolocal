@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.exceptions import DomainError
 from app.core.security import DUMMY_HASH, get_password_hash, verify_password
 from app.models import CustomerProfile, Role, User
@@ -22,13 +23,26 @@ def get_user_by_id(db: Session, user_id: int) -> User | None:
     return db.get(User, user_id)
 
 
-def register_customer(
+def register_user(
     db: Session,
     payload: CustomerRegisterRequest,
     *,
     request_id: str,
 ) -> User:
     email = normalize_email(str(payload.email))
+    if payload.role == Role.ADMIN and get_settings().environment != "development":
+        add_audit_log(
+            db,
+            actor=None,
+            action="auth.register_failed",
+            entity_type="user",
+            entity_id=None,
+            request_id=request_id,
+            metadata={"email": email, "reason": "admin_registration_disabled"},
+        )
+        db.commit()
+        raise DomainError("admin self-registration is disabled", status_code=403)
+
     if get_user_by_email(db, email):
         add_audit_log(
             db,
@@ -46,14 +60,15 @@ def register_customer(
         email=email,
         full_name=payload.full_name,
         hashed_password=get_password_hash(payload.password),
-        role=Role.CUSTOMER,
+        role=payload.role,
     )
-    user.profile = CustomerProfile(
-        phone=payload.phone,
-        address_line=payload.address_line,
-        city=payload.city,
-        birth_date=payload.birth_date,
-    )
+    if payload.role == Role.CUSTOMER:
+        user.profile = CustomerProfile(
+            phone=payload.phone or "",
+            address_line=payload.address_line or "",
+            city=payload.city or "",
+            birth_date=payload.birth_date,
+        )
     db.add(user)
     try:
         db.flush()
@@ -73,6 +88,15 @@ def register_customer(
     db.commit()
     db.refresh(user)
     return user
+
+
+def register_customer(
+    db: Session,
+    payload: CustomerRegisterRequest,
+    *,
+    request_id: str,
+) -> User:
+    return register_user(db, payload, request_id=request_id)
 
 
 def authenticate_user(

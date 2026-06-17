@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pedidolocal/models/order.dart';
 import 'package:pedidolocal/models/product.dart';
+import 'package:pedidolocal/screens/admin/admin_product_screen.dart';
 import 'package:pedidolocal/screens/auth/login_screen.dart';
 import 'package:pedidolocal/screens/auth/register_screen.dart';
 import 'package:pedidolocal/screens/cart/cart_screen.dart';
@@ -21,6 +22,7 @@ abstract final class Routes {
   static const String orders = '/orders';
   static const String orderTracking = '/orders/detail';
   static const String profile = '/profile';
+  static const String adminProduct = '/admin/products/new';
 }
 
 class RouteGenerator {
@@ -37,6 +39,7 @@ class RouteGenerator {
       Routes.orders => const OrderListScreen(),
       Routes.orderTracking => _orderTracking(settings.arguments),
       Routes.profile => const ProfileScreen(),
+      Routes.adminProduct => const AdminProductScreen(),
       _ => const NotFoundScreen(),
     };
 

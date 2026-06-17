@@ -46,8 +46,12 @@ flutter pub get
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-The current frontend is an unfinished scaffold and should be cleaned according to
-`frontend/DOCUMENTATION.md` before feature work continues.
+For the Android emulator, `10.0.2.2` points back to the host machine where Docker exposes the
+backend on port `8000`. For a physical phone on the same network, replace it with the host
+machine's LAN IP, for example `http://192.168.1.50:8000`.
+
+In development, the registration screen can create either customer or admin accounts. Admin users
+can open `Perfil > Cadastrar produto` to create categories and products through the backend API.
 
 ## Validation
 

@@ -21,4 +21,44 @@ class CatalogRepository {
         .map((item) => Product.fromJson(item as Map<String, dynamic>))
         .toList(growable: false);
   }
+
+  Future<Category> createCategory({
+    required String name,
+    String? description,
+  }) async {
+    final data = await _apiClient.post(
+      Endpoints.categories,
+      body: {
+        'name': name,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      },
+    );
+    return Category.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Product> createProduct({
+    required int categoryId,
+    required String name,
+    String? description,
+    required String price,
+    required int stock,
+    required bool isActive,
+    required bool isAlcoholic,
+  }) async {
+    final data = await _apiClient.post(
+      Endpoints.products,
+      body: {
+        'category_id': categoryId,
+        'name': name,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        'price': price,
+        'stock': stock,
+        'is_active': isActive,
+        'is_alcoholic': isAlcoholic,
+      },
+    );
+    return Product.fromJson(data as Map<String, dynamic>);
+  }
 }

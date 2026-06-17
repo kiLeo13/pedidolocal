@@ -21,7 +21,7 @@ def register_customer(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
-    return auth_service.register_customer(db, payload, request_id=get_request_id(request))
+    return auth_service.register_user(db, payload, request_id=get_request_id(request))
 
 
 @router.post("/token", response_model=TokenResponse)

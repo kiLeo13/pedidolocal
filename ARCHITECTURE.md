@@ -22,11 +22,18 @@ Pedido Local is a local-first ordering system for selling and delivering product
 - The frontend consumes the backend REST API for authentication, catalog reads, and orders.
 - Screenshot-inspired presentation details that do not exist in the backend contract yet remain local UI placeholders.
 
+## Account Creation
+
+The registration contract accepts either `customer` or `admin` roles. Customer accounts require
+profile fields (`phone`, `address_line`, and `city`) because those fields drive delivery and age
+checks. Admin accounts can be self-registered only while `ENVIRONMENT=development`; outside
+development, admin creation must use controlled operational paths such as the CLI.
+
 ## Boundaries
 
 The backend remains an intentionally monolithic API. There are no cloud dependencies, message brokers, external payment providers, push notifications, or live map services in this stage. Payment data is recorded as internal method/status fields only.
 
-The Flutter app is a separate frontend package inside the same repository. It must not introduce backend persistence, hidden business rules, or fake durable data. Product images, ratings, promotions, coupons, delivery ETA, and map route details are local presentation placeholders until backend contracts exist.
+The Flutter app is a separate frontend package inside the same repository. It must not introduce backend persistence, hidden business rules, or fake durable data. Admin catalog creation uses the protected backend category/product endpoints. Product images, ratings, promotions, coupons, delivery ETA, and map route details are local presentation placeholders until backend contracts exist.
 
 ## Integrity Rules
 
@@ -46,7 +53,11 @@ The Flutter app is a separate frontend package inside the same repository. It mu
 
 Requests enter through `app.api.routes`, which depend on authenticated users and database sessions from `app.api.deps`. Business rules live in `app.services`. ORM models live in `app.models`, and Pydantic API contracts live in `app.schemas`. Alembic migrations define the persisted SQLite schema.
 
-The Flutter app calls the REST API through a configurable base URL. For Android emulator development against a Dockerized backend, the default frontend API URL should be `http://10.0.2.2:8000`. Authenticated frontend flows store JWTs locally and send them as bearer tokens for protected order and profile endpoints.
+The Flutter app calls the REST API through a configurable base URL. For Android emulator development against a Dockerized backend, the default frontend API URL should be `http://10.0.2.2:8000`. Authenticated frontend flows store JWTs locally and send them as bearer tokens for protected order, profile, and admin catalog endpoints.
+
+Admins can open the product creation screen from the profile tab. The screen loads categories and
+products through `CatalogProvider`, can create a category inline when none exists yet, selects the
+created category, and posts new products to the backend.
 
 ## Runtime
 

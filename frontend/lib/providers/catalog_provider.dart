@@ -76,4 +76,62 @@ class CatalogProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<Category?> createCategory({
+    required String name,
+    String? description,
+  }) async {
+    Category? category;
+    await _runMutation(() async {
+      category = await repository.createCategory(
+        name: name,
+        description: description,
+      );
+      _categories = [..._categories, category!]
+        ..sort((left, right) => left.name.compareTo(right.name));
+    });
+    return category;
+  }
+
+  Future<Product?> createProduct({
+    required int categoryId,
+    required String name,
+    String? description,
+    required String price,
+    required int stock,
+    required bool isActive,
+    required bool isAlcoholic,
+  }) async {
+    Product? product;
+    await _runMutation(() async {
+      product = await repository.createProduct(
+        categoryId: categoryId,
+        name: name,
+        description: description,
+        price: price,
+        stock: stock,
+        isActive: isActive,
+        isAlcoholic: isAlcoholic,
+      );
+      _products = [..._products, product!]
+        ..sort((left, right) => left.name.compareTo(right.name));
+    });
+    return product;
+  }
+
+  Future<void> _runMutation(Future<void> Function() action) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await action();
+    } on ApiException catch (error) {
+      _error = error.message;
+    } catch (_) {
+      _error = 'Erro ao salvar catalogo.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

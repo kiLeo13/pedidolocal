@@ -20,6 +20,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _cityController = TextEditingController(text: 'Pedido Local');
   final _birthDateController = TextEditingController();
   final _passwordController = TextEditingController();
+  String _role = 'customer';
+
+  bool get _isCustomer => _role == 'customer';
 
   @override
   void dispose() {
@@ -45,8 +48,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.all(AppConstants.spacingMd),
           children: [
             Text(
-              'Dados do cliente',
+              'Dados da conta',
               style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: AppConstants.spacingMd),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'customer',
+                  icon: Icon(Icons.person_outline_rounded),
+                  label: Text('Cliente'),
+                ),
+                ButtonSegment(
+                  value: 'admin',
+                  icon: Icon(Icons.admin_panel_settings_outlined),
+                  label: Text('Admin'),
+                ),
+              ],
+              selected: {_role},
+              onSelectionChanged: auth.isLoading
+                  ? null
+                  : (values) => setState(() => _role = values.single),
             ),
             const SizedBox(height: AppConstants.spacingMd),
             TextFormField(
@@ -69,39 +91,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Telefone'),
-              validator: (value) =>
-                  _required(value, min: AppConstants.phoneMinLength),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _addressController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Endereco'),
-              validator: (value) => _required(value, min: 5),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _cityController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Cidade'),
-              validator: (value) => _required(value, min: 2),
-            ),
-            const SizedBox(height: AppConstants.spacingMd),
-            TextFormField(
-              controller: _birthDateController,
-              keyboardType: TextInputType.datetime,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Data de nascimento',
-                hintText: 'AAAA-MM-DD',
+            if (_isCustomer) ...[
+              const SizedBox(height: AppConstants.spacingMd),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Telefone'),
+                validator: (value) =>
+                    _required(value, min: AppConstants.phoneMinLength),
               ),
-            ),
+              const SizedBox(height: AppConstants.spacingMd),
+              TextFormField(
+                controller: _addressController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Endereco'),
+                validator: (value) => _required(value, min: 5),
+              ),
+              const SizedBox(height: AppConstants.spacingMd),
+              TextFormField(
+                controller: _cityController,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Cidade'),
+                validator: (value) => _required(value, min: 2),
+              ),
+              const SizedBox(height: AppConstants.spacingMd),
+              TextFormField(
+                controller: _birthDateController,
+                keyboardType: TextInputType.datetime,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Data de nascimento',
+                  hintText: 'AAAA-MM-DD',
+                ),
+              ),
+            ],
             const SizedBox(height: AppConstants.spacingMd),
             TextFormField(
               controller: _passwordController,
@@ -147,16 +171,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     final auth = context.read<AuthProvider>();
+    final birthDate = _birthDateController.text.trim();
     await auth.register(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
-      addressLine: _addressController.text.trim(),
-      city: _cityController.text.trim(),
-      birthDate: _birthDateController.text.trim().isEmpty
-          ? null
-          : _birthDateController.text.trim(),
+      role: _role,
+      phone: _isCustomer ? _phoneController.text.trim() : null,
+      addressLine: _isCustomer ? _addressController.text.trim() : null,
+      city: _isCustomer ? _cityController.text.trim() : null,
+      birthDate: _isCustomer && birthDate.isNotEmpty ? birthDate : null,
     );
     if (!mounted || !auth.isAuthenticated) {
       return;

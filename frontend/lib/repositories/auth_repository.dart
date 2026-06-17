@@ -25,19 +25,27 @@ class AuthRepository {
     required String email,
     required String password,
     required String fullName,
-    required String phone,
-    required String addressLine,
-    required String city,
+    required String role,
+    String? phone,
+    String? addressLine,
+    String? city,
     String? birthDate,
   }) async {
     final body = <String, dynamic>{
       'email': email,
       'password': password,
       'full_name': fullName,
-      'phone': phone,
-      'address_line': addressLine,
-      'city': city,
+      'role': role,
     };
+    if (phone != null && phone.isNotEmpty) {
+      body['phone'] = phone;
+    }
+    if (addressLine != null && addressLine.isNotEmpty) {
+      body['address_line'] = addressLine;
+    }
+    if (city != null && city.isNotEmpty) {
+      body['city'] = city;
+    }
     if (birthDate != null && birthDate.isNotEmpty) {
       body['birth_date'] = birthDate;
     }

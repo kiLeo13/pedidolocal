@@ -34,9 +34,10 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
     required String fullName,
-    required String phone,
-    required String addressLine,
-    required String city,
+    required String role,
+    String? phone,
+    String? addressLine,
+    String? city,
     String? birthDate,
   }) async {
     await _run(() async {
@@ -44,6 +45,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         fullName: fullName,
+        role: role,
         phone: phone,
         addressLine: addressLine,
         city: city,
