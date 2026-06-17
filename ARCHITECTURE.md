@@ -55,6 +55,17 @@ runtime builds from `/backend`, runs as a non-root `appuser`, applies Alembic mi
 startup, stores SQLite data in the `backend_data` volume at `/app/data/pedidolocal.db`, and
 serves the API on port `8000`.
 
+## CORS
+
+The backend currently installs FastAPI/Starlette CORS middleware in a deliberately permissive
+development configuration. It allows any origin, any method, any request header, exposes all
+response headers, allows credentials, and handles browser `OPTIONS` preflight requests before route
+authentication. This is useful for local mobile/web experimentation across emulators, host
+machines, and temporary frontend origins.
+
+Before any production deployment, replace this permissive policy with an explicit allowlist of
+trusted frontend origins.
+
 ## Frontend Plan
 
 The implementation plan for the Flutter customer app lives in `frontend/DOCUMENTATION.md`. Keep that document updated as frontend milestones, API assumptions, or validation steps change.

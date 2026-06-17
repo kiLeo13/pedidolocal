@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import audit, auth, catalog, health, orders
@@ -11,6 +12,14 @@ from app.core.exceptions import DomainError
 def create_app() -> FastAPI:
     settings = get_settings()
     api = FastAPI(title=settings.app_name)
+    api.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 
     @api.middleware("http")
     async def request_id_middleware(request: Request, call_next):
