@@ -20,6 +20,7 @@ import 'package:pedidolocal/repositories/order_repository.dart';
 import 'package:pedidolocal/screens/cart/cart_screen.dart';
 import 'package:pedidolocal/screens/home/home_screen.dart';
 import 'package:pedidolocal/screens/orders/order_tracking_screen.dart';
+import 'package:pedidolocal/screens/profile/profile_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'test_data.dart';
@@ -211,5 +212,56 @@ void main() {
       scrollable: find.byType(Scrollable),
     );
     expect(find.text('Atualizar pedido'), findsOneWidget);
+  });
+
+  testWidgets('profile logout clears auth state and returns to login', (
+    tester,
+  ) async {
+    final apiClient = ApiClient(
+      baseUrl: 'http://api.test',
+      httpClient: MockClient((request) async {
+        if (request.url.path == '/auth/token') {
+          return http.Response(
+            jsonEncode({'access_token': 'token-123', 'token_type': 'bearer'}),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (request.url.path == '/auth/me') {
+          return http.Response(
+            jsonEncode(userJson()),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('not found', 404);
+      }),
+    );
+    final authProvider = AuthProvider(
+      repository: AuthRepository(
+        apiClient: apiClient,
+        tokenStorage: const TokenStorage(),
+      ),
+    );
+    await authProvider.login('customer@example.com', 'Customer123');
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthProvider>.value(
+        value: authProvider,
+        child: MaterialApp(
+          home: const ProfileScreen(),
+          onGenerateRoute: RouteGenerator.onGenerateRoute,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cliente Teste'), findsOneWidget);
+
+    await tester.tap(find.text('Sair'));
+    await tester.pumpAndSettle();
+
+    expect(authProvider.isAuthenticated, isFalse);
+    expect(find.text('Acesso do cliente'), findsOneWidget);
   });
 }
